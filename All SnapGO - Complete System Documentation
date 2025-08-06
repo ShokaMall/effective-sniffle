@@ -1,0 +1,447 @@
+SnapGO - Complete System Documentation
+Table of Contents
+1.	Project Overview
+2.	Database Schema
+3.	Admin Panel Modules 
+o	Admin Dashboard
+o	User Management
+o	Subscription Management
+o	OTP Management System
+o	Reports Module
+o	System Cleanup
+o	Admin Settings
+4.	User Panel Modules 
+o	User Dashboard
+o	User Settings & Profile
+o	Wallet Management
+o	Message Center
+5.	Authentication System
+6.	API Integrations
+7.	Installation Guide
+________________________________________
+Project Overview
+SnapGO ایک subscription-based shared account management system ہے جو Thailand market کے لیے design کیا گیا ہے۔ یہ system administrators کو streaming services (YouTube, Netflix, Spotify وغیرہ) کے shared accounts manage کرنے اور users کو ان services تک محفوظ رسائی فراہم کرنے کی سہولت دیتا ہے۔
+Key Features:
+•	Shared account management with slot system
+•	Automated OTP forwarding system
+•	Multi-payment support (PromptPay, Stripe, Wallet)
+•	Real-time connection monitoring
+•	User activity tracking
+•	Comprehensive reporting
+Technology Stack:
+•	Backend: Pure PHP (No Framework)
+•	Database: MySQL
+•	Frontend: HTML, CSS, JavaScript
+•	Payment: PromptPay, EasySlip, Stripe
+•	SMS: GrizzlySMS API
+•	Email: SMTP with IMAP monitoring
+________________________________________
+Database Schema
+Core Tables
+1. users
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    city VARCHAR(50),
+    user_role ENUM('admin', 'user') DEFAULT 'user',
+    account_status ENUM('active', 'inactive', 'deleted') DEFAULT 'active',
+    wallet_balance DECIMAL(10,2) DEFAULT 0.00,
+    daily_otp_count INT DEFAULT 0,
+    last_otp_reset DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+2. subscriptions (Previously categories)
+CREATE TABLE subscriptions (
+    subscription_id INT AUTO_INCREMENT PRIMARY KEY,
+    col1_service_name VARCHAR(100) NOT NULL,
+    col2_icon VARCHAR(50),
+    col3_title VARCHAR(200),
+    col4_price DECIMAL(10,2),
+    col5_description TEXT,
+    col6_features TEXT,
+    col7_validity VARCHAR(50),
+    col8_support_info TEXT,
+    col9_extra_info1 TEXT,
+    col10_extra_info2 TEXT,
+    col11_notes TEXT,
+    service_email VARCHAR(100) NOT NULL,
+    service_password_encrypted TEXT NOT NULL,
+    otp_email VARCHAR(100),
+    max_slots INT DEFAULT 10,
+    connection_status ENUM('connected', 'disconnected') DEFAULT 'connected',
+    last_connection_check TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+3. user_subscriptions
+CREATE TABLE user_subscriptions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    subscription_id INT NOT NULL,
+    slot_number INT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    status ENUM('active', 'expired', 'cancelled') DEFAULT 'active',
+    last_otp_request TIMESTAMP NULL,
+    daily_otp_count INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (subscription_id) REFERENCES subscriptions(subscription_id)
+);
+4. wallet_transactions
+CREATE TABLE wallet_transactions (
+    transaction_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    transaction_type ENUM('credit', 'debit') NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    balance_after DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(50),
+    reference_id VARCHAR(100),
+    description VARCHAR(255),
+    added_by ENUM('user', 'admin') DEFAULT 'user',
+    admin_id INT NULL,
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    delete_after DATE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (admin_id) REFERENCES users(user_id)
+);
+5. user_activity_logs
+CREATE TABLE user_activity_logs (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    subscription_id INT,
+    activity_type ENUM('view_username', 'view_password', 'request_otp', 'login', 'logout'),
+    click_count INT DEFAULT 1,
+    activity_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (subscription_id) REFERENCES subscriptions(subscription_id),
+    UNIQUE KEY unique_activity (user_id, subscription_id, activity_type, activity_date)
+);
+6. otp_requests
+CREATE TABLE otp_requests (
+    request_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    subscription_id INT NOT NULL,
+    request_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    request_status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
+    otp_code VARCHAR(50),
+    otp_type VARCHAR(20),
+    delivery_method ENUM('dashboard', 'email', 'sms') DEFAULT 'dashboard',
+    processed_time TIMESTAMP NULL,
+    connection_restored BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (subscription_id) REFERENCES subscriptions(subscription_id)
+);
+________________________________________
+Admin Panel Modules
+Admin Dashboard
+Overview: Central control panel for administrators with real-time statistics and system monitoring.
+Features:
+•	Total users count (active/inactive)
+•	Active subscriptions by service
+•	Revenue overview (daily/monthly)
+•	OTP usage statistics
+•	Recent activities feed
+•	Quick action buttons
+UI Layout:
+┌─────────────────────────────────────────────────────────┐
+│                    Admin Dashboard                       │
+├─────────────┬───────────────────────────────────────────┤
+│             │  ┌─────────┐ ┌─────────┐ ┌─────────┐     │
+│   Sidebar   │  │ Users   │ │ Revenue │ │ OTP     │     │
+│             │  │ 256     │ │ ฿45,280 │ │ 1,234   │     │
+│  - Dashboard│  └─────────┘ └─────────┘ └─────────┘     │
+│  - Users    │                                           │
+│  - Subscr.  │  [====== Revenue Chart ======]            │
+│  - OTP      │                                           │
+│  - Reports  │  Recent Activities:                       │
+│  - Cleanup  │  • New user: john@email.com               │
+│  - Settings │  • OTP request: YouTube Premium           │
+└─────────────┴───────────────────────────────────────────┘
+________________________________________
+User Management
+Overview: Comprehensive user management with activity tracking and subscription assignment.
+Features:
+•	User CRUD operations
+•	Advanced search and filters
+•	Bulk actions support
+•	Subscription assignment
+•	Activity monitoring
+•	Click tracking (username/password views)
+Click Tracking Details:
+•	Tracks every click on "Show Password" button
+•	Tracks username copy actions
+•	Stores daily counts in user_activity_logs
+•	Resets daily at midnight
+Key Functions:
+•	createUser() - Add new user with validation
+•	assignSubscription() - Assign user to subscription slot
+•	trackUserClick() - Record password/username views
+•	getUserActivityReport() - Generate activity reports
+________________________________________
+Subscription Management
+Overview: Manage shared service accounts with flexible 11-column configuration system.
+11-Column System:
+1.	Service Name (Required)
+2.	Icon (Required)
+3.	Title (Required)
+4.	Price (Required)
+5.	Description (Optional - hidden if empty)
+6.	Features (Optional)
+7.	Validity (Optional)
+8.	Support Info (Optional)
+9.	Extra Info 1 (Optional)
+10.	Extra Info 2 (Optional)
+11.	Notes (Optional)
+Connection Status:
+•	🟢 Green = Connected
+•	🔴 Red = Disconnected
+•	Auto-detection every 5 minutes
+•	One-click reconnection via "Get OTP"
+OTP Pattern Support:
+$patterns = [
+    'numeric_6' => '/\b\d{6}\b/',              // 123456
+    'alphanumeric' => '/\b[A-Z0-9]{6}\b/',     // ABC123
+    'dash_format' => '/\d{4}-\d{4}/',          // 1234-5678
+    'service_prefix' => '/NETFLIX-(\w+)/',     // NETFLIX-ABC123
+];
+________________________________________
+OTP Management System
+Overview: Automated OTP capture and forwarding system with multi-format support.
+Features:
+•	Email-based OTP monitoring
+•	Multiple pattern recognition
+•	Real-time forwarding
+•	SMS integration (GrizzlySMS)
+•	Connection auto-recovery
+•	Daily limit management
+User Limits:
+•	Basic: 5 OTPs/day
+•	Premium: 10 OTPs/day
+•	VIP: 20 OTPs/day
+________________________________________
+Reports Module
+Simple Reporting Features:
+•	User statistics
+•	Revenue reports
+•	Subscription analytics
+•	OTP usage reports
+•	Export to CSV/PDF
+________________________________________
+System Cleanup
+Automated Cleanup Tasks:
+•	Delete 30+ day old logs
+•	Remove expired OTP records
+•	Clean failed transactions
+•	Optimize database tables
+________________________________________
+Admin Settings
+Configuration Options:
+•	Site settings (name, timezone, currency)
+•	Email configuration
+•	Payment settings
+•	Security policies
+•	OTP limits
+________________________________________
+User Panel Modules
+User Dashboard
+Overview: User's central hub for managing subscriptions and requesting OTPs.
+Features:
+•	Active subscriptions display
+•	One-click OTP request
+•	Connection status indicators
+•	Quick actions
+•	Wallet balance display
+Subscription Card Display:
+┌─────────────────────────────────────────────────────────┐
+│ 📺 YouTube Premium    Status: 🟢 Connected              │
+│                                                         │
+│ Email: shared001@domain.com                             │
+│ Password: •••••••• [Show]                               │
+│                                                         │
+│ Expires: Feb 15, 2025 (12 days)                        │
+│                                                         │
+│ [Get OTP] [View Details] [Renew]                        │
+└─────────────────────────────────────────────────────────┘
+Button States:
+•	Active subscription: All buttons enabled
+•	Disconnected: "Get OTP - Click to Connect"
+•	Expired: Only "Renew" button enabled
+________________________________________
+User Settings & Profile
+Overview: User profile management with password change and wallet access.
+Profile Dropdown Menu:
+•	Location: Top-right header
+•	Options: 
+o	Settings
+o	Logout (direct logout without warning)
+Settings Page Features:
+1.	Password Change:
+o	Old password field (with eye icon)
+o	New password field (with eye icon)
+o	Confirm password field
+o	Validation and strength indicator
+2.	Profile Information:
+o	View email (non-editable)
+o	Update phone number
+o	Update city
+________________________________________
+Wallet Management
+Overview: Complete wallet system for prepaid balance management.
+Features:
+1.	Balance Display:
+o	Current balance shown in header
+o	Detailed view in settings
+2.	Recharge Options:
+o	PromptPay QR code
+o	Stripe payment
+o	Manual admin credit
+3.	Transaction History:
+o	30-day retention period
+o	Color coding by age: 
+	1-10 days: Green
+	11-20 days: Yellow
+	21-30 days: Red
+o	Auto-delete after 30 days
+4.	Transaction Types:
+o	User recharge: "Wallet Top-up"
+o	Admin credit: "Admin Added"
+o	Admin debit: "Service Update"
+o	Service purchase: "Subscription Purchase"
+Transaction Display:
+┌─────────────────────────────────────────────────────────┐
+│ Wallet Balance: ฿1,250.00              [Recharge]      │
+├─────────────────────────────────────────────────────────┤
+│ Transaction History (Auto-deletes after 30 days)        │
+├─────────────────────────────────────────────────────────┤
+│ 🟢 Jan 20 | +฿500  | Wallet Top-up    | PromptPay     │
+│ 🟢 Jan 18 | -฿299  | YouTube Premium  | Subscription   │
+│ 🟡 Jan 10 | +฿1000 | Admin Added      | Manual         │
+│ 🔴 Jan 05 | -฿419  | Netflix Premium  | Subscription   │
+├─────────────────────────────────────────────────────────┤
+│ Note: Transactions older than 30 days will be deleted   │
+└─────────────────────────────────────────────────────────┘
+________________________________________
+Message Center
+Overview: Central notification hub for OTPs and system messages.
+Message Types:
+•	OTP codes delivery
+•	Subscription expiry alerts
+•	Payment confirmations
+•	System announcements
+OTP Display Format:
+┌─────────────────────────────────────────────────────────┐
+│ 🟢 YouTube Premium - OTP Code                           │
+│ Time: Just now                                          │
+│                                                         │
+│ Your verification code is: 458921                       │
+│                                                         │
+│ This code will expire in 10 minutes.                    │
+└─────────────────────────────────────────────────────────┘
+________________________________________
+Authentication System
+Login Page
+•	Email/Password authentication
+•	Remember me (30 days)
+•	CSRF protection
+•	Rate limiting (5 attempts/15 min)
+Security Features
+•	Bcrypt password hashing
+•	Session management
+•	HTTPOnly cookies
+•	Login attempt tracking
+________________________________________
+API Integrations
+Payment APIs
+1. PromptPay
+•	QR code generation
+•	Real-time payment verification
+•	Integration with Thai banking system
+2. EasySlip API
+•	Payment slip verification
+•	Transaction validation
+•	Automatic balance update
+3. Stripe
+•	International payments
+•	Credit/Debit card support
+•	Recurring payments (optional)
+SMS API
+GrizzlySMS Integration
+•	Virtual number management
+•	SMS OTP delivery
+•	Cost tracking
+•	Delivery reports
+________________________________________
+Installation Guide
+Requirements
+•	PHP 7.4+
+•	MySQL 5.7+
+•	Apache/Nginx
+•	SSL Certificate
+Installation Steps
+1.	Upload files to hosting
+2.	Configure database connection
+3.	Run SQL migrations
+4.	Set up SMTP settings
+5.	Configure payment APIs
+6.	Set up cron jobs
+7.	Test system functionality
+Cron Jobs
+# Reset daily OTP limits
+0 0 * * * php /path/to/cron/reset_otp_limits.php
+
+# Check expired subscriptions
+0 1 * * * php /path/to/cron/check_expiry.php
+
+# Clean old wallet transactions
+0 2 * * * php /path/to/cron/clean_wallet_history.php
+
+# Monitor OTP emails
+*/5 * * * * php /path/to/cron/check_otp_emails.php
+________________________________________
+Security Best Practices
+1.	Data Protection:
+o	Encrypt sensitive data
+o	Use prepared statements
+o	Implement CSRF tokens
+o	XSS prevention
+2.	Access Control:
+o	Role-based permissions
+o	Session validation
+o	IP restrictions (optional)
+o	Activity logging
+3.	Payment Security:
+o	SSL/TLS mandatory
+o	Payment verification
+o	Transaction logging
+o	Fraud detection
+________________________________________
+Performance Optimization
+1.	Database:
+o	Proper indexing
+o	Query optimization
+o	Connection pooling
+o	Regular maintenance
+2.	Caching:
+o	Redis/Memcached
+o	Static file caching
+o	API response caching
+o	Session caching
+3.	Frontend:
+o	Minify CSS/JS
+o	Image optimization
+o	Lazy loading
+o	CDN usage
+________________________________________
+Future Enhancements
+1.	Mobile App
+2.	Multi-language Support
+3.	Advanced Analytics
+4.	API for Third-party Integration
+5.	Automated Subscription Management
+
