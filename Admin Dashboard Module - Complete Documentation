@@ -1,0 +1,159 @@
+📋 Admin Dashboard Module - Complete Documentation
+Module Overview
+Admin Dashboard SnapGO کا central control panel ہے جہاں سے administrators پورے system کو manage کرتے ہیں۔ یہ module real-time statistics, quick actions, اور system monitoring features فراہم کرتا ہے۔
+Features & Functionality
+1. Dashboard Statistics
+•	Total Users: Active, inactive, اور deleted users کی تعداد
+•	Active Subscriptions: Currently active subscriptions by category
+•	Revenue Overview: Daily, weekly, monthly revenue tracking
+•	OTP Usage: Daily OTP requests اور success rate
+•	System Health: Server status, database connections, email service status
+2. Quick Actions Panel
+•	Add new user
+•	Create new category
+•	View pending payments
+•	Check OTP logs
+•	System announcements
+3. Recent Activities
+•	Latest user registrations
+•	Recent subscription purchases
+•	OTP request logs
+•	Payment transactions
+•	System alerts
+4. Charts & Analytics
+•	User growth chart (30 days)
+•	Revenue trend graph
+•	Category-wise subscription distribution
+•	Peak usage hours heatmap
+User Interface Design
+Layout Structure
+┌─────────────────────────────────────────────────────────┐
+│                    Header Navigation                     │
+├─────────────┬───────────────────────────────────────────┤
+│             │                                           │
+│   Sidebar   │          Main Dashboard Content          │
+│             │                                           │
+│  - Dashboard│  ┌─────────┐ ┌─────────┐ ┌─────────┐   │
+│  - Users    │  │ Stats 1 │ │ Stats 2 │ │ Stats 3 │   │
+│  - Category │  └─────────┘ └─────────┘ └─────────┘   │
+│  - OTP      │                                           │
+│  - Reports  │  ┌───────────────────────────────────┐   │
+│  - Cleanup  │  │         Revenue Chart              │   │
+│  - Settings │  └───────────────────────────────────┘   │
+│             │                                           │
+│             │  ┌───────────────────────────────────┐   │
+│             │  │      Recent Activities             │   │
+│             │  └───────────────────────────────────┘   │
+└─────────────┴───────────────────────────────────────────┘
+Color Scheme
+•	Primary: #F57224 (Orange - from original documentation)
+•	Secondary: #0F146D (Dark Blue)
+•	Success: #10B981
+•	Warning: #F59E0B
+•	Background: #F2F3F7
+Responsive Design
+•	Desktop: Full sidebar + content
+•	Tablet: Collapsible sidebar
+•	Mobile: Bottom navigation + stacked cards
+Database Tables Used
+1. users
+sql
+- user_id
+- email
+- full_name
+- account_status
+- last_login
+- created_at
+2. user_subscriptions
+sql
+- subscription_id
+- user_id
+- category_id
+- status
+- start_date
+- end_date
+3. payment_transactions
+sql
+- transaction_id
+- user_id
+- amount
+- payment_method
+- status
+4. activity_logs
+sql
+- log_id
+- user_id
+- activity_type
+- activity_description
+- created_at
+File Structure
+modules/admin/
+├── admin_dashboard.php       # Main dashboard file
+├── admin_navigation_bar.php  # Top navigation
+├── admin_sidebar.php        # Side navigation
+└── dashboard_api.php        # AJAX endpoints
+Key Functions
+Statistics Calculation
+•	getTotalUsers() - Total users count with status breakdown
+•	getActiveSubscriptions() - Current active subscriptions
+•	getRevenueStats($period) - Revenue for specified period
+•	getOTPUsageStats() - OTP usage statistics
+Chart Data Generation
+•	getUserGrowthData() - 30-day user registration data
+•	getRevenueChartData() - Revenue trend data
+•	getCategoryDistribution() - Subscription distribution by category
+AJAX Endpoints
+/api/admin/dashboard/
+├── get-stats.php         # Real-time statistics
+├── get-activities.php    # Recent activities
+├── get-chart-data.php    # Chart data
+└── refresh-widget.php    # Widget refresh
+Security Features
+1.	Role Check: Only admin role can access
+2.	Session Validation: Check admin session on each request
+3.	CSRF Protection: Token validation for all actions
+4.	Activity Logging: All dashboard access logged
+5.	IP Restriction: Optional IP whitelist for admin access
+Performance Optimization
+1.	Caching: Statistics cached for 5 minutes
+2.	Lazy Loading: Charts load after page render
+3.	Database Indexing: Optimized queries with proper indexes
+4.	Pagination: Recent activities limited to 20 items
+Business Logic
+Dashboard Refresh Rules
+•	Statistics: Auto-refresh every 5 minutes
+•	Activities: Real-time updates via WebSocket (optional)
+•	Charts: Manual refresh button available
+Alert Thresholds
+•	Low balance alert: When wallet < 1000 THB
+•	High OTP usage: > 80% of daily limit
+•	Failed payments: > 5 in last hour
+•	Server load: > 80% CPU usage
+Mobile Responsiveness
+•	320px-767px: Single column, bottom navigation
+•	768px-1023px: Collapsible sidebar, 2-column grid
+•	1024px+: Full sidebar, 3-column grid
+Integration Points
+1.	Payment APIs: Show real-time payment status
+2.	Email Service: Monitor email delivery status
+3.	SMS Gateway: Track SMS OTP usage
+4.	System Monitoring: Server resource usage
+Error Handling
+•	Database connection failures: Show cached data
+•	API timeouts: Display last known values
+•	Invalid data: Graceful degradation
+•	Permission errors: Redirect to login
+Future Enhancements
+1.	Real-time notifications
+2.	Customizable dashboard widgets
+3.	Export reports functionality
+4.	Multi-language support
+5.	Dark mode theme
+________________________________________
+کیا یہ format ٹھیک ہے؟ کیا میں اگلا module documentation شروع کروں؟
+اگلے modules:
+•	User Management Module
+•	Category Management Module
+•	OTP System Module
+•	etc.
+
